@@ -1,0 +1,35 @@
+---
+title: "Hebeloma RNA Treatment Selection 11 Apr 2022"
+author: "Oceana Tavasieff"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse, message(F))
+library(janitor)
+```
+
+```{r message=F}
+raw_colonization<- read_csv("Hebeloma percent colonization.csv")
+raw_water_potl <- read_csv("Water potential data Hebeloma.csv")
+```
+
+```{r}
+colonization <- raw_colonization %>% clean_names() %>% filter(., seedling != "MM058") %>% rename(notes_COL = notes)
+water_potl <- raw_water_potl %>% clean_names() %>% rename(seedling = plant, notes_WP =notes) %>% mutate(water_potential_m_pa = ifelse(seedling == "MM058",NA, water_potential_m_pa),                                                                                   notes_WP=ifelse(seedling == "MM058","water potential coded as NA 11 Apr 2022 OT", notes_WP),
+                                                                                                        entry_number = NULL, 
+                                                                                                        date = NULL) %>% filter(., seedling!="MM058")
+
+#w2 <- water_potl %>% group_by(seedling) %>%filter(n()>1) # check for duplicated (MM048 actually MM058, entry_number = 95)
+# SO MM058 is potentailly double measured, coded as "NA" for future measurements
+# c2 <-colonization %>%  group_by(seedling) %>% filter(n()>1)
+```
+
+```{r}
+merge <- full_join(water_potl, colonization, by="seedling") %>% mutate(colonized = ifelse(grepl("HC", seedling), "Y", "N"),
+                                                                       n = ifelse(grepl("P", n, ignore.case = T), "Plus", "Minus")) %>% arrange(water_potential_m_pa) %>% group_by(colonized, n, water_level) %>% arrange()
+
+write.csv(merge,"Merged Hebeloma 11Apr2022 OT.csv", row.names = FALSE)
+
+```
+
