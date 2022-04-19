@@ -2,6 +2,8 @@
 
 library(tidyverse)
 library(cowplot)
+library(lme4)
+library(lmerTest)
 
 fulldata = read_csv("Merged Hebeloma 11Apr2022 OT.csv")
 
@@ -21,6 +23,17 @@ weird_point = fulldata[fulldata$water_level == "L" &
 # this is plant HC004
 
 fulldata$n[fulldata$seedling == "HC004"] = "Plus"
+
+fulldata$minutes_in_cooler = difftime(fulldata$approximate_measurement_time,
+                                   fulldata$time,
+                                   units = "mins")
+
+fulldata$harvest_day = as.factor(fulldata$harvest_day)
+fulldata$drydown_day = recode_factor(fulldata$harvest_day,
+                              "1" = "1",
+                              "2" = "3",
+                              "3" = "7",
+                              "4" = "10")
 
 # fulldata$drydown_day = numeric(nrow(fulldata))
 # for (i in 1:nrow(fulldata)) {
@@ -90,6 +103,60 @@ ggplot(data = subset(fulldata, harvest_day == 2)) +
                  shape = colonized)) +
   xlab("Time at harvest") +
   ylab("Water potential (MPa)")
+
+# Let's look at all days at once:
+
+ggplot(data = fulldata) +
+  theme_cowplot() +
+  geom_point(aes(x = minutes_in_cooler, 
+                 y = water_potential_m_pa,
+                 color = water_level,
+                 shape = colonized)) +
+  xlab("Minutes since harvest") +
+  ylab("Water potential (MPa)")
+
+# This is encouraging. I don't see a pattern of drier plants after more time in the cooler.
+
+# Formalizing with stats:
+
+cooler_check = lmer(water_potential_m_pa ~ minutes_in_cooler + (1|colonized) + (1|n) + (1|harvest_day) + (1|water_level), 
+                    data = fulldata)
+summary(cooler_check)
+
+cooler_check_simpler = lm(water_potential_m_pa ~ minutes_in_cooler, 
+                    data = fulldata)
+summary(cooler_check_simpler)
+# Okay, this is kind of a bummer, but both models agree:
+# The longer a shoot spent in the cooler, the drier it was.
+# However, the effect size estimate is MINISCULE:
+# Plants became 0.001 MPa drier with each minute in the cooler.
+# (LME says -0.0015; normal lm says -0.0012.)
+# (Similar effect predicted by both models.)
+# So, in an hour, we'd see a difference of 0.06 MPa.
+# Our absolute longest-sitting samples had sat for almost 400 minutes
+# so they may have appeared to be about 0.4 MPa drier than they really were.
+# This is good to know, but I don't think it torpedoes our analysis.
+# As long as two plants are more than half an MPa different,
+# that distinction likely reflects real physiology.
+
+# Would it make sense to correct the water potential estimates with this simple model?
+
+fulldata$corrected_phi = fulldata$water_potential_m_pa - 0.001561*fulldata$minutes_in_cooler
+
+ggplot(data = fulldata) +
+  theme_cowplot() +
+  geom_jitter(width = 0.25,
+              aes(x = drydown_day, 
+                  y = corrected_phi,
+                  color = water_level,
+                  shape = colonized)) +
+  xlab("Days of drydown") +
+  ylab("Water potential (MPa)\n(corrected for time spent in cooler)")
+
+
+
+
+# Example ggplot code from an old project below:
 
 massplot = ggplot(data = bio_and_col_onlyclean) +
   geom_boxplot(outlier.alpha = 0,
