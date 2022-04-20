@@ -5,6 +5,10 @@ library(cowplot)
 library(lme4)
 library(lmerTest)
 
+# Constants:
+
+PHI_LOSS_PER_MIN = -0.001561 # from lmer below, to correct water potential
+
 fulldata = read_csv("Merged Hebeloma 11Apr2022 OT.csv")
 
 fulldata$percent_col = 100*(fulldata$colonized_tips/fulldata$total_tips)
@@ -35,19 +39,7 @@ fulldata$drydown_day = recode_factor(fulldata$harvest_day,
                               "3" = "7",
                               "4" = "10")
 
-# fulldata$drydown_day = numeric(nrow(fulldata))
-# for (i in 1:nrow(fulldata)) {
-#   if (fulldata$harvest_day[i] == "1") {
-#     fulldata$drydown_day[i] = 1
-#   } else if (fulldata$harvest_day[i] == "2") {
-#     fulldata$drydown_day[i] = 3
-#   } else if (fulldata$harvest_day[i] == "3") {
-#     fulldata$drydown_day[i] = 7
-#   } else if (fulldata$harvest_day[i] == "4") {
-#     fulldata$drydown_day[i] = 10
-#   }
-# }
-
+fulldata$corrected_phi = fulldata$water_potential_m_pa - PHI_LOSS_PER_MIN*fulldata$minutes_in_cooler
 
 colonized = subset(fulldata, colonized == "Y")
 
@@ -64,6 +56,12 @@ ggplot(data = colonized) +
                   color = water_level)) +
   xlab("Nitrogen treatment") +
   ylab("Percent ectomycorrhizal colonization")
+
+colmodel = lmer(percent_col ~ n * water_level + (1|drydown_day),
+                data = colonized)
+summary(colmodel)
+anova(colmodel)
+# water level is significant, n level no.
 
 # water potentials
 ggplot(data = fulldata) +
@@ -108,14 +106,19 @@ ggplot(data = subset(fulldata, harvest_day == 2)) +
 
 ggplot(data = fulldata) +
   theme_cowplot() +
-  geom_point(aes(x = minutes_in_cooler, 
+  geom_point(aes(x = as.numeric(minutes_in_cooler), 
                  y = water_potential_m_pa,
                  color = water_level,
                  shape = colonized)) +
+  geom_smooth(aes(x = as.numeric(minutes_in_cooler), 
+                y = water_potential_m_pa),
+              formula = y ~ x, 
+              method = "lm") +
   xlab("Minutes since harvest") +
   ylab("Water potential (MPa)")
 
 # This is encouraging. I don't see a pattern of drier plants after more time in the cooler.
+# buuut adding the smooth geom really undermined that impression.
 
 # Formalizing with stats:
 
@@ -140,8 +143,8 @@ summary(cooler_check_simpler)
 # that distinction likely reflects real physiology.
 
 # Would it make sense to correct the water potential estimates with this simple model?
+# Added constant and column above to do just that.
 
-fulldata$corrected_phi = fulldata$water_potential_m_pa - 0.001561*fulldata$minutes_in_cooler
 
 ggplot(data = fulldata) +
   theme_cowplot() +
@@ -153,10 +156,22 @@ ggplot(data = fulldata) +
   xlab("Days of drydown") +
   ylab("Water potential (MPa)\n(corrected for time spent in cooler)")
 
+ggplot(data = colonized) +
+  theme_cowplot() +
+  geom_point(aes(x = percent_col, 
+                 y = corrected_phi,
+                 color = water_level)) +
+  geom_smooth(aes(x = percent_col, 
+                  y = corrected_phi),
+              formula = y ~ x, 
+              method = "lm") +
+  xlab("Percent colonization") +
+  ylab("Corrected water potential (MPa)")
+
+write_csv(fulldata, "data_for_picking_samples.csv")
 
 
-
-# Example ggplot code from an old project below:
+# Example ggplot code from an old project below (using to scavenge ggplot syntax):
 
 massplot = ggplot(data = bio_and_col_onlyclean) +
   geom_boxplot(outlier.alpha = 0,
