@@ -10,6 +10,7 @@ library(lmerTest)
 PHI_LOSS_PER_MIN = -0.001561 # from lmer below, to correct water potential
 
 fulldata = read_csv("Merged Hebeloma 11Apr2022 OT.csv")
+shootmass = read_csv("LB Hebeloma Seedling Shoot Dry Mass.xlsx - Sheet1.csv", skip = 2)
 
 fulldata$percent_col = 100*(fulldata$colonized_tips/fulldata$total_tips)
 
@@ -40,6 +41,10 @@ fulldata$drydown_day = recode_factor(fulldata$harvest_day,
                               "4" = "10")
 
 fulldata$corrected_phi = fulldata$water_potential_m_pa - PHI_LOSS_PER_MIN*fulldata$minutes_in_cooler
+fulldata = mutate(fulldata, ID = seedling)
+fulldata = left_join(fulldata, shootmass)
+
+fulldata$percent_col[fulldata$colonized == "N"] = 0 #NAs were making analysis difficult
 
 colonized = subset(fulldata, colonized == "Y")
 
@@ -169,6 +174,40 @@ ggplot(data = colonized) +
   ylab("Corrected water potential (MPa)")
 
 write_csv(fulldata, "data_for_picking_samples.csv")
+
+# Looking at biomass
+
+fulldata = mutate(fulldata, sketchy_mass_total = root_mass_mg + `mass (g)`)
+# Need to account for the fact that your root masses are wet
+# and your shoot masses are dry. For now, though, I guess this is fine.
+
+ggplot(data = fulldata) +
+  theme_cowplot() +
+  geom_point(aes(x = percent_col, 
+                 y = sketchy_mass_total,
+                 color = water_level, 
+                 shape = n)) +
+  geom_smooth(aes(x = percent_col, 
+                  y = sketchy_mass_total),
+              formula = y ~ x, 
+              method = "lm") +
+  xlab("Percent colonization") +
+  ylab("Approximate total biomass (g)")
+
+labels = c(Minus = "No N", Plus = "With N")
+ggplot(data = fulldata) +
+  theme_cowplot() +
+  geom_boxplot(outlier.alpha = 0,
+               position = position_dodge(0.9),
+               aes(x = water_level, y = sketchy_mass_total,
+                   color = colonized)) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.9,
+                                             jitter.width = 0.2),
+             aes(x = water_level, y = sketchy_mass_total,
+                 color = colonized)) +
+  facet_grid(. ~ n, labeller = labeller(n = labels)) +
+  xlab("Water level") +
+  ylab("Approximate total biomass (g)")
 
 
 # Example ggplot code from an old project below (using to scavenge ggplot syntax):
