@@ -1,0 +1,13 @@
+﻿Sample Name,"Common, Scientific name",Tissue of origin ,ng per µl,Volume (in µl),Spectrophotometer purity reading (should be 1.8 to 2.1). Enter 0 if we need to measure.,Spectrophotometer purity reading (should be > 1.5). Enter 0 if we need to measure.,RNA Integrity Number (RIN)(optional),"A, B, C...",Davis sample label
+HC090,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,32.19,14,2.06,1.77,,A,
+HC030,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,19.72,14,2.24,2.09,,A,
+HC098,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,9.6,14,2.07,1.11,,A,
+HC037,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,27.06,14,1.72,0.98,,A,
+HC007,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,14.4,14,1.92,1.07,,B,
+HC057,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,9.11,14,1.76,1.51,,B,
+HC097,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,23.3,14,2.32,1.76,,B,
+HC015,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,30.66,14,1.96,1.35,,B,
+MM098,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,29.94,14,1.44,0.71,,C,
+HC073,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Hebeloma cylindrosporum",Roots,3.49,14,2.31,1.07,,D,
+RS303,"Douglas-fir tree, Pseudotsuga menziesii without symbiotic fungus Suillus lakei",Roots,9.42,,1.82,0.03,,E,
+RS508,"Douglas-fir tree, Pseudotsuga menziesii with symbiotic fungus Suillus lakei",Roots,59.78,,1.5,0.52,,F,
