@@ -8,6 +8,8 @@ library(lmerTest)
 # Constants:
 
 PHI_LOSS_PER_MIN = -0.001561 # from lmer below, to correct water potential
+APPROX_ROOT_WET_TO_DRY_CONVERSION = 0.261 # conversion factor from small test of 10 root systems,
+# in Google Sheets as "wet to dry root mass conversion"
 
 fulldata = read_csv("Merged Hebeloma 11Apr2022 OT.csv")
 shootmass = read_csv("LB Hebeloma Seedling Shoot Dry Mass.xlsx - Sheet1.csv", skip = 2)
@@ -28,6 +30,7 @@ weird_point = fulldata[fulldata$water_level == "L" &
 # this is plant HC004
 
 fulldata$n[fulldata$seedling == "HC004"] = "Plus"
+
 
 fulldata$minutes_in_cooler = difftime(fulldata$approximate_measurement_time,
                                    fulldata$time,
@@ -177,18 +180,26 @@ write_csv(fulldata, "data_for_picking_samples.csv")
 
 # Looking at biomass
 
+fulldata$`mass (g)`[fulldata$seedling == "MM037"] = 0.077 # was mis-typed originally as 0.77
+
+
 fulldata = mutate(fulldata, sketchy_mass_total = root_mass_mg + `mass (g)`)
 # Need to account for the fact that your root masses are wet
 # and your shoot masses are dry. For now, though, I guess this is fine.
 
+fulldata = mutate(fulldata, est_dry_root_mass = root_mass_mg * APPROX_ROOT_WET_TO_DRY_CONVERSION)
+fulldata = mutate(fulldata, total_plant_mass = est_dry_root_mass + `mass (g)`)
+fulldata$harv_day_cont = as.numeric(fulldata$harvest_day)
+
+
 ggplot(data = fulldata) +
   theme_cowplot() +
   geom_point(aes(x = percent_col, 
-                 y = sketchy_mass_total,
+                 y = total_plant_mass,
                  color = water_level, 
                  shape = n)) +
   geom_smooth(aes(x = percent_col, 
-                  y = sketchy_mass_total),
+                  y = total_plant_mass),
               formula = y ~ x, 
               method = "lm") +
   xlab("Percent colonization") +
@@ -199,16 +210,148 @@ ggplot(data = fulldata) +
   theme_cowplot() +
   geom_boxplot(outlier.alpha = 0,
                position = position_dodge(0.9),
-               aes(x = water_level, y = sketchy_mass_total,
+               aes(x = water_level, y = total_plant_mass,
                    color = colonized)) +
   geom_point(position = position_jitterdodge(dodge.width = 0.9,
                                              jitter.width = 0.2),
-             aes(x = water_level, y = sketchy_mass_total,
+             aes(x = water_level, y = total_plant_mass,
                  color = colonized)) +
   facet_grid(. ~ n, labeller = labeller(n = labels)) +
   xlab("Water level") +
-  ylab("Approximate total biomass (g)")
+  ylab("Approximate total dry biomass (g)")
 
+massmodel = lm(total_plant_mass ~ water_level * n * colonized, data = fulldata)
+summary(massmodel)
+anova(massmodel)
+
+# Water potential boxplot
+
+labels = c(Minus = "No N", Plus = "With N")
+ggplot(data = fulldata) +
+  theme_cowplot() +
+  geom_boxplot(outlier.alpha = 0,
+               position = position_dodge(0.9),
+               aes(x = water_level, y = corrected_phi,
+                   color = colonized)) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.9,
+                                             jitter.width = 0.2),
+             aes(x = water_level, y = corrected_phi,
+                 color = colonized, alpha = harv_day_cont)) +
+  facet_grid(. ~ n, labeller = labeller(n = labels)) +
+  xlab("Water level") +
+  ylab("Water potential (MPa)")
+
+fulldata$corrected_phi = as.numeric(fulldata$corrected_phi)
+
+phimodel = lm(corrected_phi ~ water_level * n * colonized * harvest_day, data = fulldata)
+plot(phimodel)
+summary(phimodel)
+original_anova = aov(phimodel)
+summary(original_anova)
+TukeyHSD(original_anova)
+
+phimodel_lme = lmer(corrected_phi ~ water_level * n * colonized +(1|harvest_day), data = fulldata)
+summary(phimodel_lme)
+
+labels = c(L = "Low water", M = "Medium water", H = "High water")
+panel1 = ggplot(data = subset(fulldata, n == "Plus")) +
+  theme_cowplot() +
+  geom_boxplot(outlier.alpha = 0,
+               position = position_dodge(0.9),
+               aes(x = drydown_day, y = corrected_phi,
+                   color = colonized)) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.9,
+                                             jitter.width = 0.2),
+             aes(x = drydown_day, y = corrected_phi,
+                 color = colonized)) +
+  scale_color_manual(values = c("cadetblue3", "cadetblue4")) +
+  facet_grid(. ~ water_level, labeller = labeller(water_level = labels)) +
+  guides(color = "none") +
+  xlab("Days since watering") +
+  ylab("Water potential (MPa)") +
+  theme(plot.margin = unit(c(1.5,3,1,2), "lines"))
+
+
+panel2 = ggplot(data = subset(fulldata, n == "Minus")) +
+  theme_cowplot() +
+  theme(legend.position = "left") +
+  geom_boxplot(outlier.alpha = 0,
+               position = position_dodge(0.9),
+               aes(x = drydown_day, y = corrected_phi,
+                   color = colonized)) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.9,
+                                             jitter.width = 0.2),
+             aes(x = drydown_day, y = corrected_phi,
+                 color = colonized)) +
+  scale_color_manual(name = "Ectomycorrhizal colonization   ", values = c("cadetblue3", "cadetblue4")) +
+  facet_grid(. ~ water_level, labeller = labeller(water_level = labels)) +
+  xlab("Days since watering") +
+  ylab("Water potential (MPa)") +
+  theme(plot.margin = unit(c(2,3,1,2), "lines"))
+
+water_potential_plot_for_poster = plot_grid(panel1, panel2, 
+                                            labels = c("A: With N", "B: No N"),
+          ncol = 1)
+
+save_plot("plots/water_potential_multipanel.pdf", 
+          water_potential_plot_for_poster,
+          base_height = 6.5)
+
+# What can I say on the poster that is true and interesting?
+
+fulldata$days_since_water = as.numeric(as.character(fulldata$drydown_day))
+
+just_highwater = subset(fulldata, water_level == "H")
+
+highwater_lm = lm(corrected_phi ~ days_since_water*colonized, data = subset(just_highwater, n = "Plus"))
+summary(highwater_lm)
+
+test = lm(corrected_phi ~ harvest_day*colonized*n, data = just_highwater)
+anova(test)
+
+test = lm(corrected_phi ~ harvest_day*colonized, data = subset(just_highwater, n = "Plus"))
+myanova = aov(test)
+TukeyHSD(myanova)
+
+phimodel_again = lm(corrected_phi ~ water_level * n * colonized * days_since_water, data = fulldata)
+plot(phimodel_again)
+summary(phimodel_again)
+original_anova_again = aov(phimodel_again)
+summary(original_anova_again)
+TukeyHSD(original_anova_again)
+
+phimodel = lm(corrected_phi ~ water_level * n * colonized * harvest_day, data = fulldata)
+plot(phimodel)
+summary(phimodel)
+original_anova = aov(phimodel)
+summary(original_anova)
+TukeyHSD(original_anova)
+
+# only marginally sigificant interactions are water_level:harvest_day and n:colonized:harvest_day, so for Tukey simplicity I'm going to build a simpler model.
+
+phimodel_simpler = lm(corrected_phi ~ water_level + n + colonized + harvest_day + water_level:harvest_day + n:colonized:harvest_day, data = fulldata)
+phimodel_simpler_anova = aov(phimodel_simpler)
+TukeyHSD(phimodel_simpler_anova) # still hard to interpret.
+
+# let's eliminate all non-significant terms.
+
+phimodel_simplest = lm(corrected_phi ~ water_level + colonized + harvest_day, data = fulldata)
+simplest_anova = aov(phimodel_simplest)
+TukeyHSD(simplest_anova)
+
+# This output is pretty hard to interpret. Maybe I am more interested in whether having fungi
+# changed the rate at which you dried down? That is did colonization change the slope of the line
+# relation harvest day to shoot water potential?
+# Actually that IS what this is showing I think. It's just not quite an ANOVA question.
+
+
+ggplot(data = fulldata) +
+  geom_jitter(aes(x = as.numeric(as.character(drydown_day)), y = corrected_phi,
+                 color = water_level,
+                 shape = colonized))
+
+phithroughtime = lm(corrected_phi ~ harv_day_cont * colonized * water_level, data = fulldata)
+summary(phithroughtime)
 
 # Example ggplot code from an old project below (using to scavenge ggplot syntax):
 
