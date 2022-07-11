@@ -47,12 +47,14 @@ fulldata$corrected_phi = fulldata$water_potential_m_pa - PHI_LOSS_PER_MIN*fullda
 fulldata = mutate(fulldata, ID = seedling)
 fulldata = left_join(fulldata, shootmass)
 
+fulldata$days_since_water = as.numeric(as.character(fulldata$drydown_day))
+
 fulldata$percent_col[fulldata$colonized == "N"] = 0 #NAs were making analysis difficult
 
 colonized = subset(fulldata, colonized == "Y")
 
-# Percent colonization by water treatment
-ggplot(data = colonized) +
+#### Percent colonization by water treatment ####
+colonization_by_water_level_plot = ggplot(data = colonized) +
   theme_cowplot() +
   geom_boxplot(outlier.alpha = 0,
                position = position_dodge(0.9),
@@ -62,14 +64,26 @@ ggplot(data = colonized) +
                                              jitter.width = 0.2),
               aes(x = n, y = percent_col,
                   color = water_level)) +
+  scale_color_manual(values = c("deepskyblue2", "dodgerblue3", "darkblue"),
+                     labels = c("Low", "Medium", "High"),
+                     name = "Water level") +
+  scale_x_discrete(labels = c("No N", "With N")) +
   xlab("Nitrogen treatment") +
-  ylab("Percent ectomycorrhizal colonization")
+  ylab("Percent ectomycorrhizal colonization\n(inoculated plants only)")
+
+save_plot("plots/colonization_by_water_level_boxplot.pdf", colonization_by_water_level_plot)
 
 colmodel = lmer(percent_col ~ n * water_level + (1|drydown_day),
                 data = colonized)
 summary(colmodel)
 anova(colmodel)
 # water level is significant, n level no.
+library("car")
+colmodelnotmixed = lm(percent_col ~ water_level * n, data = colonized)
+summary(colmodelnotmixed)
+myanova = Anova(colmodelnotmixed, type = "III")
+colanova = aov(percent_col ~ n * water_level, data = colonized)
+TukeyHSD(colanova)
 
 # water potentials
 ggplot(data = fulldata) +
@@ -164,17 +178,7 @@ ggplot(data = fulldata) +
   xlab("Days of drydown") +
   ylab("Water potential (MPa)\n(corrected for time spent in cooler)")
 
-ggplot(data = colonized) +
-  theme_cowplot() +
-  geom_point(aes(x = percent_col, 
-                 y = corrected_phi,
-                 color = water_level)) +
-  geom_smooth(aes(x = percent_col, 
-                  y = corrected_phi),
-              formula = y ~ x, 
-              method = "lm") +
-  xlab("Percent colonization") +
-  ylab("Corrected water potential (MPa)")
+
 
 write_csv(fulldata, "data_for_picking_samples.csv")
 
@@ -299,7 +303,6 @@ save_plot("plots/water_potential_multipanel.pdf",
 
 # What can I say on the poster that is true and interesting?
 
-fulldata$days_since_water = as.numeric(as.character(fulldata$drydown_day))
 
 just_highwater = subset(fulldata, water_level == "H")
 
@@ -352,6 +355,27 @@ ggplot(data = fulldata) +
 
 phithroughtime = lm(corrected_phi ~ harv_day_cont * colonized * water_level, data = fulldata)
 summary(phithroughtime)
+
+#### More fungi = drier plant ####
+
+ggplot(data = colonized) +
+  theme_cowplot() +
+  geom_point(aes(x = percent_col, 
+                 y = corrected_phi,
+                 color = days_since_water,
+                 shape = water_level)) +
+  geom_smooth(aes(x = percent_col, 
+                  y = corrected_phi),
+              formula = y ~ x, 
+              method = "lm") +
+  xlab("Percent ectomycorrhizal colonization\n(inoculated plants only)") +
+  ylab("Shoot water potential at harvest (MPa)")
+
+water_by_col = lmer(as.numeric(corrected_phi) ~ percent_col + (1|days_since_water) + (1|water_level) + (1|n), data = colonized)
+summary(water_by_col)
+
+test = lm(corrected_phi ~ percent_col, data = colonized)
+summary(test)
 
 # Example ggplot code from an old project below (using to scavenge ggplot syntax):
 
