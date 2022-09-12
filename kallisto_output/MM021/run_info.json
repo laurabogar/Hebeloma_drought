@@ -1,0 +1,13 @@
+{
+	"n_targets": 331745,
+	"n_bootstraps": 0,
+	"n_processed": 5185840,
+	"n_pseudoaligned": 3285884,
+	"n_unique": 2061967,
+	"p_pseudoaligned": 63.4,
+	"p_unique": 39.8,
+	"kallisto_version": "0.48.0",
+	"index_version": 10,
+	"start_time": "Fri Sep  9 18:11:50 2022",
+	"call": "kallisto quant -i ../PSME_reference/psme_transcripts.idx --single -l 250 -s 50 -o MM021 MM021_UMI_S65_R1_001.fastq.gz"
+}

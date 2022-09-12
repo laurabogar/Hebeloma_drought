@@ -1,0 +1,13 @@
+{
+	"n_targets": 331745,
+	"n_bootstraps": 0,
+	"n_processed": 5958483,
+	"n_pseudoaligned": 3055291,
+	"n_unique": 2068149,
+	"p_pseudoaligned": 51.3,
+	"p_unique": 34.7,
+	"kallisto_version": "0.48.0",
+	"index_version": 10,
+	"start_time": "Fri Sep  9 18:20:55 2022",
+	"call": "kallisto quant -i ../PSME_reference/psme_transcripts.idx --single -l 250 -s 50 -o RS508 RS508_UMI_S74_R1_001.fastq.gz"
+}

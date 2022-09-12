@@ -1,0 +1,13 @@
+{
+	"n_targets": 331745,
+	"n_bootstraps": 0,
+	"n_processed": 5244865,
+	"n_pseudoaligned": 3274868,
+	"n_unique": 2120356,
+	"p_pseudoaligned": 62.4,
+	"p_unique": 40.4,
+	"kallisto_version": "0.48.0",
+	"index_version": 10,
+	"start_time": "Fri Sep  9 18:19:52 2022",
+	"call": "kallisto quant -i ../PSME_reference/psme_transcripts.idx --single -l 250 -s 50 -o RS303 RS303_UMI_S73_R1_001.fastq.gz"
+}
